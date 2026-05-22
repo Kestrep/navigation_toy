@@ -14,8 +14,8 @@ margin = 0.0
 radius = 0.1
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_ball"]
-friction = 1.0
-bounce = 0.0
+friction = 1.2
+bounce = 0.2
 
 [node name="Ball" type="RigidBody3D" unique_id=38239096]
 collision_layer = 1

@@ -1,17 +1,27 @@
 extends Node3D
 
+const Ball = preload("res://scripts/ball.gd")
+
 const RAY_LENGTH := 1000.0
 const NAV_POINT_MAX_DISTANCE := 1.0
 const INVALID_WORLD_POINT := Vector3(INF, INF, INF)
+const THROW_MIN_DRAG_PIXELS := 8.0
+const THROW_SPEED_PER_PIXEL := 0.07
+const THROW_MIN_SPEED := 2.0
+const THROW_MAX_SPEED := 22.0
 
 @onready var navigation_region: NavigationRegion3D = $NavigationRegion3D
 @onready var _info_panel: PanelContainer = $CanvasLayer/CharacterInfoPanel
 @onready var _spawn_toolbar: Control = $CanvasLayer/SpawnToolbar
+@onready var _throw_feedback: Label = $CanvasLayer/ThrowFeedbackLabel
+@onready var _cat_catch_score = $CanvasLayer/CatCatchScore
 @onready var _cube_build_mode: Node3D = $CubeBuildMode
 @onready var _ramp_build_mode: Node3D = $RampBuildMode
 
 var _selected_character: CharacterBody3D = null
-var _selected_ball: RigidBody3D = null
+var _selected_ball: Ball = null
+var _throw_dragging: bool = false
+var _throw_drag_start: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
@@ -21,8 +31,14 @@ func _ready() -> void:
 	_ramp_build_mode.mode_exited.connect(_on_ramp_build_mode_exited)
 
 
+func register_cat_catch() -> void:
+	_cat_catch_score.increment()
+
+
 func _process(_delta: float) -> void:
-	if _selected_ball == null or _get_active_build_mode():
+	if _selected_ball == null or _get_active_build_mode() or _throw_dragging:
+		return
+	if _selected_ball.is_thrown() or not _selected_ball.should_follow_cursor():
 		return
 
 	var world_point: Vector3 = _get_world_point_from_mouse(1)
@@ -44,20 +60,87 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	var mouse_event := event as InputEventMouseButton
+
+	if mouse_event.button_index == MOUSE_BUTTON_LEFT and not mouse_event.pressed and _throw_dragging:
+		_finish_throw_drag(mouse_event.position)
+		_throw_dragging = false
+		get_viewport().set_input_as_handled()
+		return
+
 	if not mouse_event.pressed:
 		return
 
 	var active_build_mode := _get_active_build_mode()
 	if active_build_mode:
-		active_build_mode.handle_mouse_button(mouse_event.button_index)
+		if mouse_event.pressed:
+			active_build_mode.handle_mouse_button(mouse_event.button_index)
 		get_viewport().set_input_as_handled()
+		return
+
+	if mouse_event.button_index == MOUSE_BUTTON_RIGHT and mouse_event.pressed:
+		_handle_right_click()
+		get_viewport().set_input_as_handled()
+		return
+
+	if _selected_ball and mouse_event.button_index == MOUSE_BUTTON_LEFT and not _selected_ball.is_thrown():
+		_throw_dragging = true
+		_throw_drag_start = mouse_event.position
+
+		var hit := _raycast_from_screen(mouse_event.position, 0xffffffff)
+		if not hit.is_empty():
+			var ball := _get_ball_from_collider(hit.collider)
+			if ball == _selected_ball:
+				_selected_ball.prepare_for_next_throw()
+
+		get_viewport().set_input_as_handled()
+		return
+
+	if not mouse_event.pressed:
 		return
 
 	match mouse_event.button_index:
 		MOUSE_BUTTON_LEFT:
 			_handle_left_click()
-		MOUSE_BUTTON_RIGHT:
-			_handle_right_click()
+
+
+func _finish_throw_drag(end_position: Vector2) -> void:
+	if _selected_ball == null:
+		return
+
+	var screen_delta := end_position - _throw_drag_start
+	if screen_delta.length() < THROW_MIN_DRAG_PIXELS:
+		return
+
+	var ball_pos := _selected_ball.global_position
+	var end_world := _get_ground_point_from_screen(end_position)
+	if end_world == INVALID_WORLD_POINT:
+		return
+
+	var world_delta := Vector3(end_world.x - ball_pos.x, 0.0, end_world.z - ball_pos.z)
+	if world_delta.length_squared() < 0.0001:
+		return
+
+	var normalized := world_delta.normalized()
+	var speed := clampf(screen_delta.length() * THROW_SPEED_PER_PIXEL, THROW_MIN_SPEED, THROW_MAX_SPEED)
+	_throw_feedback.show_throw(normalized, speed)
+	_selected_ball.launch(normalized, speed)
+
+
+func _get_ground_point_from_screen(screen_pos: Vector2) -> Vector3:
+	var camera := get_viewport().get_camera_3d()
+	if camera == null:
+		return INVALID_WORLD_POINT
+
+	var ray_origin := camera.project_ray_origin(screen_pos)
+	var ray_direction := camera.project_ray_normal(screen_pos)
+	if absf(ray_direction.y) < 0.001:
+		return INVALID_WORLD_POINT
+
+	var t := -ray_origin.y / ray_direction.y
+	if t < 0.0:
+		return INVALID_WORLD_POINT
+
+	return ray_origin + ray_direction * t
 
 
 func _on_cube_build_requested() -> void:
@@ -130,6 +213,7 @@ func _handle_left_click() -> void:
 
 func _handle_right_click() -> void:
 	if _selected_ball:
+		_throw_dragging = false
 		_deselect_ball()
 		return
 
@@ -148,14 +232,13 @@ func _handle_right_click() -> void:
 	_selected_character.set_move_target(closest)
 
 
-func _raycast_from_mouse(collision_mask: int = 0xffffffff) -> Dictionary:
+func _raycast_from_screen(screen_pos: Vector2, collision_mask: int = 0xffffffff) -> Dictionary:
 	var camera := get_viewport().get_camera_3d()
 	if camera == null:
 		return {}
 
-	var mouse_pos := get_viewport().get_mouse_position()
-	var ray_origin := camera.project_ray_origin(mouse_pos)
-	var ray_end := ray_origin + camera.project_ray_normal(mouse_pos) * RAY_LENGTH
+	var ray_origin := camera.project_ray_origin(screen_pos)
+	var ray_end := ray_origin + camera.project_ray_normal(screen_pos) * RAY_LENGTH
 
 	var space_state := get_world_3d().direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(ray_origin, ray_end)
@@ -166,27 +249,16 @@ func _raycast_from_mouse(collision_mask: int = 0xffffffff) -> Dictionary:
 	return space_state.intersect_ray(query)
 
 
+func _raycast_from_mouse(collision_mask: int = 0xffffffff) -> Dictionary:
+	return _raycast_from_screen(get_viewport().get_mouse_position(), collision_mask)
+
+
 func _get_world_point_from_mouse(collision_mask: int = 0xffffffff) -> Vector3:
 	var hit := _raycast_from_mouse(collision_mask)
 	if not hit.is_empty():
 		return hit.position as Vector3
 
-	var camera := get_viewport().get_camera_3d()
-	if camera == null:
-		return INVALID_WORLD_POINT
-
-	var mouse_pos := get_viewport().get_mouse_position()
-	var ray_origin := camera.project_ray_origin(mouse_pos)
-	var ray_direction := camera.project_ray_normal(mouse_pos)
-
-	if absf(ray_direction.y) < 0.001:
-		return INVALID_WORLD_POINT
-
-	var t := -ray_origin.y / ray_direction.y
-	if t < 0.0:
-		return INVALID_WORLD_POINT
-
-	return ray_origin + ray_direction * t
+	return _get_ground_point_from_screen(get_viewport().get_mouse_position())
 
 
 func _get_character_from_collider(collider: Object) -> CharacterBody3D:
@@ -198,11 +270,11 @@ func _get_character_from_collider(collider: Object) -> CharacterBody3D:
 	return null
 
 
-func _get_ball_from_collider(collider: Object) -> RigidBody3D:
+func _get_ball_from_collider(collider: Object) -> Ball:
 	var node: Node = collider as Node
 	while node:
-		if node.is_in_group("selectable_ball") and node is RigidBody3D:
-			return node as RigidBody3D
+		if node is Ball:
+			return node as Ball
 		node = node.get_parent()
 	return null
 
@@ -217,11 +289,14 @@ func _select_character(character: CharacterBody3D) -> void:
 	_info_panel.show_character(character)
 
 
-func _select_ball(ball: RigidBody3D) -> void:
+func _select_ball(ball: Ball) -> void:
 	if _selected_ball == ball:
+		if not ball.is_thrown():
+			ball.prepare_for_next_throw()
 		return
 
 	_deselect_all()
+	_throw_dragging = false
 	_selected_ball = ball
 	ball.select()
 	_info_panel.show_ball(ball)
@@ -236,6 +311,7 @@ func _deselect_ball() -> void:
 
 
 func _deselect_all() -> void:
+	_throw_dragging = false
 	if _selected_character:
 		_selected_character.deselect()
 		_selected_character = null

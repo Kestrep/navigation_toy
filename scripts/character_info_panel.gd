@@ -1,5 +1,7 @@
 extends PanelContainer
 
+const Ball = preload("res://scripts/ball.gd")
+
 @onready var _name_label: Label = %NameLabel
 @onready var _description_label: Label = %DescriptionLabel
 
@@ -15,7 +17,7 @@ func show_character(character: CharacterBody3D) -> void:
 	visible = true
 
 
-func show_ball(ball: RigidBody3D) -> void:
+func show_ball(ball: Ball) -> void:
 	_name_label.text = ball.get_display_name()
 	_description_label.text = ""
 	_description_label.visible = false
