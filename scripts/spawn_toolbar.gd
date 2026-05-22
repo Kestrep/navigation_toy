@@ -5,6 +5,7 @@ signal ramp_build_requested
 
 @onready var _cube_button: Button = %CubeButton
 @onready var _ramp_button: Button = %RampButton
+@onready var _pnj_button: Button = $CenterContainer/MarginContainer/HBoxContainer/PNJButton
 
 var _style_normal: StyleBoxFlat
 var _style_active: StyleBoxFlat
@@ -15,6 +16,9 @@ func _ready() -> void:
 	_style_active = _style_normal.duplicate() as StyleBoxFlat
 	_style_active.bg_color = Color(0.85, 0.82, 0.72, 1)
 
+	_cube_button.focus_mode = Control.FOCUS_NONE
+	_ramp_button.focus_mode = Control.FOCUS_NONE
+	_pnj_button.focus_mode = Control.FOCUS_NONE
 	_cube_button.pressed.connect(_on_cube_button_pressed)
 	_ramp_button.pressed.connect(_on_ramp_button_pressed)
 
