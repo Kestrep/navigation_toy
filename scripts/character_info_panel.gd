@@ -11,6 +11,14 @@ func _ready() -> void:
 func show_character(character: CharacterBody3D) -> void:
 	_name_label.text = character.get_display_name()
 	_description_label.text = character.get_description_text()
+	_description_label.visible = true
+	visible = true
+
+
+func show_ball(ball: RigidBody3D) -> void:
+	_name_label.text = ball.get_display_name()
+	_description_label.text = ""
+	_description_label.visible = false
 	visible = true
 
 

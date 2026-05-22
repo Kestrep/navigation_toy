@@ -1,0 +1,6 @@
+[gd_resource type="CylinderMesh" format=3 uid="uid://choxv14ipf483"]
+
+[resource]
+top_radius = 0.1
+bottom_radius = 0.3
+height = 0.01

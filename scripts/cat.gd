@@ -3,6 +3,7 @@ extends CharacterBody3D
 @export var move_speed: float = 2.5
 @export var pause_duration: float = 1.5
 @export var avoidance_separation_radius: float = 0.15
+@export var turn_speed: float = 10.0
 
 @onready var navigation_agent: NavigationAgent3D = $NavigationAgent3D
 
@@ -44,12 +45,23 @@ func _physics_process(delta: float) -> void:
 	if direction.length_squared() > 0.0001:
 		direction = direction.normalized()
 	var desired_velocity := direction * move_speed
+	_update_facing(direction, delta)
 	navigation_agent.set_velocity(desired_velocity)
 
 
 func _on_velocity_computed(safe_velocity: Vector3) -> void:
 	velocity = safe_velocity
 	move_and_slide()
+	if safe_velocity.length_squared() > 0.01:
+		_update_facing(safe_velocity, get_physics_process_delta_time())
+
+
+func _update_facing(flat_direction: Vector3, delta: float) -> void:
+	var direction := Vector3(flat_direction.x, 0.0, flat_direction.z)
+	if direction.length_squared() < 0.0001:
+		return
+	var target_yaw := atan2(direction.x, direction.z)
+	rotation.y = lerp_angle(rotation.y, target_yaw, turn_speed * delta)
 
 
 func _start_pause() -> void:

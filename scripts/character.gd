@@ -2,8 +2,9 @@ extends CharacterBody3D
 
 @export var move_speed: float = 4.0
 @export var pause_duration: float = 1.0
-## Rayon d'évitement RVO : distance minimale entre centres = 2× cette valeur (~1 m d'écart entre cylindres).
-@export var avoidance_separation_radius: float = 1.0
+@export var avoidance_separation_radius: float = 0.35
+@export var rvo_activation_distance: float = 2.0
+@export var stuck_bypass_duration: float = 0.75
 
 @onready var navigation_agent: NavigationAgent3D = $NavigationAgent3D
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
@@ -16,6 +17,12 @@ var _pause_time_left: float = 0.0
 var _first_name: String = ""
 var _last_name: String = ""
 var _description_text: String = ""
+var _last_desired_velocity: Vector3 = Vector3.ZERO
+var _bypass_avoidance_time_left: float = 0.0
+var _bypass_velocity: Vector3 = Vector3.ZERO
+var _stuck_frames: int = 0
+var _yield_side_sign: float = 1.0
+var _rvo_activation_distance_sq: float = 0.0
 
 
 func _ready() -> void:
@@ -27,6 +34,7 @@ func _ready() -> void:
 	_first_name = identity["first_name"]
 	_last_name = identity["last_name"]
 	_description_text = identity["description"]
+	_yield_side_sign = 1.0 if rng.randf() >= 0.5 else -1.0
 
 	_material_normal = StandardMaterial3D.new()
 	_material_normal.albedo_color = Color(0.2, 0.5, 1.0)
@@ -39,6 +47,8 @@ func _ready() -> void:
 	navigation_agent.velocity_computed.connect(_on_velocity_computed)
 	navigation_agent.radius = avoidance_separation_radius
 	navigation_agent.max_speed = move_speed
+	navigation_agent.avoidance_priority = rng.randf_range(0.2, 0.8)
+	_rvo_activation_distance_sq = rvo_activation_distance * rvo_activation_distance
 
 	await get_tree().physics_frame
 	_pick_random_wander_target()
@@ -68,6 +78,7 @@ func get_description_text() -> String:
 
 func set_move_target(world_pos: Vector3) -> void:
 	_cancel_pause()
+	_reset_unstuck_state()
 	navigation_agent.target_position = world_pos
 
 
@@ -96,12 +107,71 @@ func _physics_process(delta: float) -> void:
 	if direction.length_squared() > 0.0001:
 		direction = direction.normalized()
 	var desired_velocity := direction * move_speed
-	navigation_agent.set_velocity(desired_velocity)
+	_last_desired_velocity = desired_velocity
+
+	if _bypass_avoidance_time_left > 0.0:
+		_bypass_avoidance_time_left -= delta
+		velocity = _bypass_velocity
+		move_and_slide()
+		return
+
+	if _should_use_rvo():
+		navigation_agent.set_velocity(desired_velocity)
+		return
+
+	_stuck_frames = 0
+	velocity = desired_velocity
+	move_and_slide()
 
 
 func _on_velocity_computed(safe_velocity: Vector3) -> void:
+	if _bypass_avoidance_time_left > 0.0:
+		return
+
+	var desired_speed := _last_desired_velocity.length()
+	var safe_speed := safe_velocity.length()
+	if desired_speed > move_speed * 0.25 and safe_speed < 0.15:
+		_stuck_frames += 1
+		if _stuck_frames >= 6:
+			_start_unstuck()
+	else:
+		_stuck_frames = 0
+
 	velocity = safe_velocity
 	move_and_slide()
+
+
+func _should_use_rvo() -> bool:
+	for node in get_tree().get_nodes_in_group("selectable_character"):
+		if node == self:
+			continue
+		if not node is Node3D:
+			continue
+		var other := node as Node3D
+		if global_position.distance_squared_to(other.global_position) <= _rvo_activation_distance_sq:
+			return true
+	return false
+
+
+func _start_unstuck() -> void:
+	_bypass_velocity = _compute_sidestep_velocity(_last_desired_velocity)
+	_bypass_avoidance_time_left = stuck_bypass_duration
+	_stuck_frames = 0
+
+
+func _compute_sidestep_velocity(desired: Vector3) -> Vector3:
+	var flat := Vector3(desired.x, 0.0, desired.z)
+	if flat.length_squared() < 0.0001:
+		return Vector3.ZERO
+	flat = flat.normalized()
+	var side := Vector3.UP.cross(flat) * _yield_side_sign
+	return (flat * 0.3 + side).normalized() * move_speed
+
+
+func _reset_unstuck_state() -> void:
+	_bypass_avoidance_time_left = 0.0
+	_bypass_velocity = Vector3.ZERO
+	_stuck_frames = 0
 
 
 func _start_pause() -> void:

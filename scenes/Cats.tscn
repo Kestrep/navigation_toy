@@ -1,6 +1,13 @@
-[gd_scene load_steps=10 format=3 uid="uid://mc8f0qpa5cfw"]
+[gd_scene format=3 uid="uid://mc8f0qpa5cfw"]
 
-[ext_resource type="Script" path="res://scripts/cat.gd" id="1_cat"]
+[ext_resource type="Script" uid="uid://bq21mautk01xv" path="res://scripts/cat.gd" id="1_cat"]
+[ext_resource type="CylinderMesh" uid="uid://choxv14ipf483" path="res://ressources_dev/pink_bottom.tres" id="2_j4i78"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_lbg6f"]
+size = Vector3(0.20727539, 0.28077698, 0.38487244)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dh05d"]
+albedo_color = Color(1, 0.101960786, 1, 1)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_125rp"]
 albedo_color = Color(0.99999994, 0.99263483, 0.95646006, 1)
@@ -26,62 +33,65 @@ albedo_color = Color(0.08627451, 0, 0, 1)
 
 [sub_resource type="SphereMesh" id="SphereMesh_8njoa"]
 material = SubResource("StandardMaterial3D_0pwy1")
-radius = 0.005
-height = 0.01
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_lbg6f"]
-size = Vector3(0.20727539, 0.28077698, 0.38487244)
+radius = 0.01
+height = 0.02
 
 [node name="CatBody" type="CharacterBody3D" unique_id=79967133]
 collision_layer = 4
-collision_mask = 1
 script = ExtResource("1_cat")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=587886569]
-transform = Transform3D(1.9106855e-15, -4.3711385e-08, -0.99999994, -1, -4.3711385e-08, 0, -4.371139e-08, 0.99999994, -4.3711385e-08, 0, 0.18447162, 0)
-mesh = SubResource("CapsuleMesh_x3dyx")
-
-[node name="patte arrière gauche" type="MeshInstance3D" parent="." unique_id=276987240]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.09, 0.10224635, -0.09)
-mesh = SubResource("BoxMesh_dh05d")
-
-[node name="patte avant gauche" type="MeshInstance3D" parent="." unique_id=935364390]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.09, 0.10224635, 0.09)
-mesh = SubResource("BoxMesh_dh05d")
-
-[node name="patte arrière droite" type="MeshInstance3D" parent="." unique_id=1709710132]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.09, 0.09624635, -0.1)
-mesh = SubResource("BoxMesh_dh05d")
-
-[node name="patte avant droite" type="MeshInstance3D" parent="." unique_id=2081294792]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.09, 0.10224635, 0.09)
-mesh = SubResource("BoxMesh_dh05d")
-
-[node name="queue" type="MeshInstance3D" parent="." unique_id=480469472]
-transform = Transform3D(1, 0, 0, 0, 0.9969678, 0.0778153, 0, -0.0778153, 0.9969678, 0, 0.2847541, -0.18978588)
-mesh = SubResource("BoxMesh_8no6a")
-
-[node name="oeuil gauche" type="MeshInstance3D" parent="." unique_id=404181050]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.037210077, 0.2355243, 0.17795089)
-mesh = SubResource("SphereMesh_8njoa")
-
-[node name="oeuil droit" type="MeshInstance3D" parent="." unique_id=1969614128]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.03011036, 0.2355243, 0.17795089)
-mesh = SubResource("SphereMesh_8njoa")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=96972842]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.015991211, 0.13466644, 0.0013504028)
 shape = SubResource("BoxShape3D_lbg6f")
 
-[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
-radius = 0.15
-height = 0.25
-max_speed = 2.5
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=66086864]
 path_desired_distance = 0.2
 target_desired_distance = 0.2
 avoidance_enabled = true
-avoidance_layers = 1
-avoidance_mask = 1
+height = 0.25
+radius = 0.15
 neighbor_distance = 4.0
 max_neighbors = 8
 time_horizon_agents = 0.5
+max_speed = 2.5
+avoidance_layers = 2
+avoidance_mask = 2
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="." unique_id=383754807]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.005, 0)
+mesh = ExtResource("2_j4i78")
+surface_material_override/0 = SubResource("StandardMaterial3D_dh05d")
+
+[node name="VisualNode" type="Node3D" parent="." unique_id=1245930158]
+
+[node name="Corps" type="MeshInstance3D" parent="VisualNode" unique_id=587886569]
+transform = Transform3D(1.9106855e-15, -4.3711385e-08, -0.99999994, -1, -4.3711385e-08, 0, -4.371139e-08, 0.99999994, -4.3711385e-08, 0, 0.18447162, 0)
+mesh = SubResource("CapsuleMesh_x3dyx")
+
+[node name="patte arrière gauche" type="MeshInstance3D" parent="VisualNode" unique_id=276987240]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.09, 0.10224635, -0.09)
+mesh = SubResource("BoxMesh_dh05d")
+
+[node name="patte avant gauche" type="MeshInstance3D" parent="VisualNode" unique_id=935364390]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.09, 0.10224635, 0.09)
+mesh = SubResource("BoxMesh_dh05d")
+
+[node name="patte arrière droite" type="MeshInstance3D" parent="VisualNode" unique_id=1709710132]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.09, 0.09624635, -0.1)
+mesh = SubResource("BoxMesh_dh05d")
+
+[node name="patte avant droite" type="MeshInstance3D" parent="VisualNode" unique_id=2081294792]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.09, 0.10224635, 0.09)
+mesh = SubResource("BoxMesh_dh05d")
+
+[node name="queue" type="MeshInstance3D" parent="VisualNode" unique_id=480469472]
+transform = Transform3D(1, 0, 0, 0, 0.9969678, 0.0778153, 0, -0.0778153, 0.9969678, 0, 0.2847541, -0.18978588)
+mesh = SubResource("BoxMesh_8no6a")
+
+[node name="oeuil gauche" type="MeshInstance3D" parent="VisualNode" unique_id=404181050]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.037210077, 0.2355243, 0.17795089)
+mesh = SubResource("SphereMesh_8njoa")
+
+[node name="oeuil droit" type="MeshInstance3D" parent="VisualNode" unique_id=1969614128]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.03011036, 0.2355243, 0.17795089)
+mesh = SubResource("SphereMesh_8njoa")

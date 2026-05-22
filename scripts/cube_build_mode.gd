@@ -3,6 +3,8 @@ extends Node3D
 const CUBE_SCENE: PackedScene = preload("res://scenes/Cube.tscn")
 const _PlacementUtils = preload("res://scripts/placement_utils.gd")
 const PREVIEW_COLOR := Color(0.9882353, 0.7058824, 0.11372549, 0.55)
+const CUBE_MESH_HALF_HEIGHT := 0.5
+const GROUND_Y := 0.0
 
 signal mode_entered
 signal mode_exited
@@ -57,7 +59,7 @@ func _process(_delta: float) -> void:
 		return
 
 	_preview.visible = true
-	_preview.global_position = _PlacementUtils.snap_position_to_grid(world_point)
+	_preview.global_position = _snap_cube_root(world_point) + Vector3(0.0, CUBE_MESH_HALF_HEIGHT, 0.0)
 
 
 func _create_preview() -> void:
@@ -86,8 +88,12 @@ func _place_cube() -> void:
 
 	var cube := CUBE_SCENE.instantiate()
 	_ground.add_child(cube)
-	cube.global_position = _PlacementUtils.snap_position_to_grid(world_point)
+	cube.global_position = _snap_cube_root(world_point)
 	_main.rebake_navigation_mesh()
+
+
+func _snap_cube_root(world_point: Vector3) -> Vector3:
+	return _PlacementUtils.snap_position_to_ground_grid(world_point, GROUND_Y)
 
 
 func _get_placement_point() -> Vector3:
@@ -114,7 +120,7 @@ func _get_placement_point() -> Vector3:
 	if absf(ray_direction.y) < 0.001:
 		return Vector3.INF
 
-	var t := -ray_origin.y / ray_direction.y
+	var t := (GROUND_Y - ray_origin.y) / ray_direction.y
 	if t < 0.0:
 		return Vector3.INF
 

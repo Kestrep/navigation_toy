@@ -11,6 +11,7 @@ const INVALID_WORLD_POINT := Vector3(INF, INF, INF)
 @onready var _ramp_build_mode: Node3D = $RampBuildMode
 
 var _selected_character: CharacterBody3D = null
+var _selected_ball: RigidBody3D = null
 
 
 func _ready() -> void:
@@ -18,6 +19,17 @@ func _ready() -> void:
 	_spawn_toolbar.ramp_build_requested.connect(_on_ramp_build_requested)
 	_cube_build_mode.mode_exited.connect(_on_cube_build_mode_exited)
 	_ramp_build_mode.mode_exited.connect(_on_ramp_build_mode_exited)
+
+
+func _process(_delta: float) -> void:
+	if _selected_ball == null or _get_active_build_mode():
+		return
+
+	var world_point: Vector3 = _get_world_point_from_mouse(1)
+	if world_point == INVALID_WORLD_POINT:
+		return
+
+	_selected_ball.follow_cursor(world_point)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -104,6 +116,11 @@ func _handle_left_click() -> void:
 		return
 
 	var collider: Object = hit.collider
+	var ball := _get_ball_from_collider(collider)
+	if ball:
+		_select_ball(ball)
+		return
+
 	var character := _get_character_from_collider(collider)
 	if character:
 		_select_character(character)
@@ -112,6 +129,10 @@ func _handle_left_click() -> void:
 
 
 func _handle_right_click() -> void:
+	if _selected_ball:
+		_deselect_ball()
+		return
+
 	if _selected_character == null:
 		return
 
@@ -177,6 +198,15 @@ func _get_character_from_collider(collider: Object) -> CharacterBody3D:
 	return null
 
 
+func _get_ball_from_collider(collider: Object) -> RigidBody3D:
+	var node: Node = collider as Node
+	while node:
+		if node.is_in_group("selectable_ball") and node is RigidBody3D:
+			return node as RigidBody3D
+		node = node.get_parent()
+	return null
+
+
 func _select_character(character: CharacterBody3D) -> void:
 	if _selected_character == character:
 		return
@@ -187,9 +217,30 @@ func _select_character(character: CharacterBody3D) -> void:
 	_info_panel.show_character(character)
 
 
+func _select_ball(ball: RigidBody3D) -> void:
+	if _selected_ball == ball:
+		return
+
+	_deselect_all()
+	_selected_ball = ball
+	ball.select()
+	_info_panel.show_ball(ball)
+
+
+func _deselect_ball() -> void:
+	if _selected_ball:
+		_selected_ball.deselect()
+		_selected_ball = null
+	if _info_panel:
+		_info_panel.hide_panel()
+
+
 func _deselect_all() -> void:
 	if _selected_character:
 		_selected_character.deselect()
 		_selected_character = null
+	if _selected_ball:
+		_selected_ball.deselect()
+		_selected_ball = null
 	if _info_panel:
 		_info_panel.hide_panel()

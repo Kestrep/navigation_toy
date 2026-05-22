@@ -4,6 +4,8 @@ const RAMP_SCENE: PackedScene = preload("res://scenes/Ramp.tscn")
 const _PlacementUtils = preload("res://scripts/placement_utils.gd")
 const PREVIEW_COLOR := Color(0.0050146226, 0.6246298, 9.433627e-06, 0.55)
 const ROTATION_STEP := PI * 0.5
+const RAMP_MESH_HALF_HEIGHT := 0.5
+const GROUND_Y := 0.0
 
 signal mode_entered
 signal mode_exited
@@ -67,7 +69,7 @@ func _process(_delta: float) -> void:
 		return
 
 	_preview.visible = true
-	_preview.global_position = _PlacementUtils.snap_position_to_grid(world_point)
+	_preview.global_position = _snap_ramp_root(world_point) + Vector3(0.0, RAMP_MESH_HALF_HEIGHT, 0.0)
 	_update_preview_rotation()
 
 
@@ -103,9 +105,13 @@ func _place_ramp() -> void:
 
 	var ramp := RAMP_SCENE.instantiate()
 	_ground.add_child(ramp)
-	ramp.global_position = _PlacementUtils.snap_position_to_grid(world_point)
+	ramp.global_position = _snap_ramp_root(world_point)
 	ramp.rotation.y = _y_rotation_steps * ROTATION_STEP
 	_main.rebake_navigation_mesh()
+
+
+func _snap_ramp_root(world_point: Vector3) -> Vector3:
+	return _PlacementUtils.snap_position_to_ground_grid(world_point, GROUND_Y)
 
 
 func _get_placement_point() -> Vector3:
@@ -132,7 +138,7 @@ func _get_placement_point() -> Vector3:
 	if absf(ray_direction.y) < 0.001:
 		return Vector3.INF
 
-	var t := -ray_origin.y / ray_direction.y
+	var t := (GROUND_Y - ray_origin.y) / ray_direction.y
 	if t < 0.0:
 		return Vector3.INF
 
