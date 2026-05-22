@@ -1,0 +1,44 @@
+[gd_scene load_steps=5 format=3 uid="uid://3g0r7a6jih3e"]
+
+[ext_resource type="Script" uid="uid://cro3ry07mcgcq" path="res://scripts/character.gd" id="1_character"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_char"]
+radius = 0.5
+height = 2.0
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_char"]
+top_radius = 0.5
+bottom_radius = 0.5
+height = 2.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_char"]
+albedo_color = Color(0.2, 0.5, 1, 1)
+
+[node name="Character" type="CharacterBody3D" unique_id=1748313328 groups=["selectable_character"]]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_character")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=693436197]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("CapsuleShape3D_char")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=310279246]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+mesh = SubResource("CylinderMesh_char")
+surface_material_override/0 = SubResource("StandardMaterial3D_char")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=1150483651]
+radius = 1.0
+height = 2.0
+max_speed = 4.0
+path_desired_distance = 0.5
+target_desired_distance = 0.5
+avoidance_enabled = true
+avoidance_layers = 1
+avoidance_mask = 1
+neighbor_distance = 8.0
+max_neighbors = 10
+time_horizon_agents = 0.75
+debug_enabled = true
+debug_path_custom_color = Color(0.45119536, 0.00014304458, 0.45190018, 1)

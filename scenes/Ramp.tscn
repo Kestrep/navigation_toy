@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://c0aw3smjjmoyo"]
+
+[sub_resource type="PrismMesh" id="PrismMesh_02qa7"]
+left_to_right = 1.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_08jc4"]
+albedo_color = Color(0.0050146226, 0.6246298, 9.433627e-06, 1)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_02qa7"]
+points = PackedVector3Array(-0.5, -0.5, -0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, 0.5, 0.5)
+
+[node name="RampBody" type="StaticBody3D" unique_id=1807232314]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1525540558]
+mesh = SubResource("PrismMesh_02qa7")
+surface_material_override/0 = SubResource("StandardMaterial3D_08jc4")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=564754281]
+shape = SubResource("ConvexPolygonShape3D_02qa7")
