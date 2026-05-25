@@ -10,7 +10,7 @@
 [ext_resource type="Script" uid="uid://b3llmpbk635p8" path="res://scripts/isometric_camera_pivot.gd" id="9_camera_pivot"]
 [ext_resource type="PackedScene" uid="uid://mc8f0qpa5cfw" path="res://scenes/Cats.tscn" id="10_cat"]
 [ext_resource type="PackedScene" uid="uid://dsb2c7w1hr8id" path="res://scenes/Ball.tscn" id="11_ball"]
-[ext_resource type="Script" path="res://scripts/throw_feedback_label.gd" id="12_throw_feedback"]
+[ext_resource type="Script" uid="uid://c5pu8bhmptw3x" path="res://scripts/throw_feedback_label.gd" id="12_throw_feedback"]
 [ext_resource type="PackedScene" path="res://scenes/CatCatchScore.tscn" id="13_catch_score"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_sgp6g"]
@@ -24,7 +24,7 @@ agent_max_slope = 50.0
 size = Vector2(30, 30)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0wfyh"]
-albedo_color = Color(0.9882353, 0.7058824, 0.11372549, 1)
+albedo_color = Color(0.9882353, 0.7058824, 0.84313726, 1)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_sgp6g"]
 
@@ -40,7 +40,7 @@ anchors_preset = -1
 
 [node name="SpawnToolbar" parent="CanvasLayer" unique_id=1116618056 instance=ExtResource("6_spawn_toolbar")]
 
-[node name="ThrowFeedbackLabel" type="Label" parent="CanvasLayer"]
+[node name="ThrowFeedbackLabel" type="Label" parent="CanvasLayer" unique_id=985598459]
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
@@ -51,10 +51,10 @@ offset_bottom = -10.0
 grow_vertical = 0
 theme_override_colors/font_color = Color(0.15, 0.15, 0.15, 1)
 theme_override_font_sizes/font_size = 16
-text = ""
 script = ExtResource("12_throw_feedback")
 
-[node name="CatCatchScore" parent="CanvasLayer" instance=ExtResource("13_catch_score")]
+[node name="CatCatchScore" parent="CanvasLayer" unique_id=1363183606 instance=ExtResource("13_catch_score")]
+anchors_preset = 5
 
 [node name="CubeBuildMode" type="Node3D" parent="." unique_id=287716668]
 script = ExtResource("7_build_mode")
