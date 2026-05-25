@@ -1,6 +1,8 @@
 extends Node3D
 
 const YAW_STEP_DEG := 90.0
+const YAW_CORNER_COUNT := 4
+const NORTH_YAW_CORNER_INDEX := 0
 const ZOOM_STEP := 0.08
 const ZOOM_MIN := 0.45
 const ZOOM_MAX := 1.75
@@ -11,7 +13,8 @@ const ZOOM_MAX := 1.75
 
 @onready var _camera: Camera3D = $Camera3D
 
-var _yaw_deg: float = 0.0
+var _yaw_corner_index: int = 0
+var _target_yaw_corner_index: int = 0
 var _zoom_factor: float = 1.0
 var _base_camera_position: Vector3
 var _rotate_tween: Tween
@@ -20,7 +23,7 @@ var _is_middle_drag_pan: bool = false
 
 func _ready() -> void:
 	_base_camera_position = _camera.position
-	rotation_degrees.y = _yaw_deg
+	_apply_yaw_corner_index(_yaw_corner_index)
 	_apply_zoom()
 
 
@@ -66,8 +69,8 @@ func _pan_by_screen_delta(screen_delta: Vector2) -> void:
 	var axes := _get_pan_axes()
 	if axes.is_empty():
 		return
-	var scale := pan_mouse_sensitivity / _zoom_factor
-	position -= (axes[0] * screen_delta.x - axes[1] * screen_delta.y) * scale
+	var pan_scale := pan_mouse_sensitivity / _zoom_factor
+	position -= (axes[0] * screen_delta.x - axes[1] * screen_delta.y) * pan_scale
 
 
 func _flatten_to_xz(vector: Vector3) -> Vector3:
@@ -106,20 +109,67 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+func reset_to_north() -> void:
+	if _rotate_tween:
+		_rotate_tween.kill()
+		_rotate_tween = null
+		_yaw_corner_index = _target_yaw_corner_index
+
+	if _target_yaw_corner_index == NORTH_YAW_CORNER_INDEX and _yaw_corner_index == NORTH_YAW_CORNER_INDEX:
+		if is_equal_approx(rotation.y, _yaw_radians_for_corner(NORTH_YAW_CORNER_INDEX)):
+			return
+
+	_target_yaw_corner_index = NORTH_YAW_CORNER_INDEX
+	_animate_yaw_rad(_yaw_radians_for_corner(NORTH_YAW_CORNER_INDEX))
+
+
 func _rotate_corner(direction: int) -> void:
 	if _rotate_tween:
 		_rotate_tween.kill()
-		_yaw_deg = rotation_degrees.y
+		_rotate_tween = null
+		# Repartir du coin cible (pas de l'angle intermédiaire du tween interrompu).
+		_yaw_corner_index = _target_yaw_corner_index
 
-	_yaw_deg += float(direction) * YAW_STEP_DEG
-	_animate_to_corner()
+	_target_yaw_corner_index = _wrap_yaw_corner_index(_yaw_corner_index + direction)
+	var target_rad := rotation.y + deg_to_rad(float(direction) * YAW_STEP_DEG)
+	_animate_yaw_rad(target_rad)
 
 
-func _animate_to_corner() -> void:
+func _wrap_yaw_corner_index(index: int) -> int:
+	return (index % YAW_CORNER_COUNT + YAW_CORNER_COUNT) % YAW_CORNER_COUNT
+
+
+func _yaw_degrees_for_corner(index: int) -> float:
+	return float(_wrap_yaw_corner_index(index)) * YAW_STEP_DEG
+
+
+func _yaw_radians_for_corner(index: int) -> float:
+	return deg_to_rad(_yaw_degrees_for_corner(index))
+
+
+func _apply_yaw_corner_index(index: int) -> void:
+	rotation_degrees.y = _yaw_degrees_for_corner(index)
+
+
+func _animate_yaw_rad(target_rad: float) -> void:
+	var start_rad := rotation.y
 	_rotate_tween = create_tween()
 	_rotate_tween.set_ease(Tween.EASE_IN_OUT)
 	_rotate_tween.set_trans(Tween.TRANS_CUBIC)
-	_rotate_tween.tween_property(self, "rotation_degrees:y", _yaw_deg, rotate_duration_sec)
+	_rotate_tween.tween_method(
+		func(t: float) -> void:
+			rotation.y = lerp_angle(start_rad, target_rad, t),
+		0.0,
+		1.0,
+		rotate_duration_sec,
+	)
+	_rotate_tween.finished.connect(_on_rotate_tween_finished, CONNECT_ONE_SHOT)
+
+
+func _on_rotate_tween_finished() -> void:
+	_rotate_tween = null
+	_yaw_corner_index = _target_yaw_corner_index
+	_apply_yaw_corner_index(_yaw_corner_index)
 
 
 func _zoom_by_steps(direction: int, strength: float = 1.0) -> void:

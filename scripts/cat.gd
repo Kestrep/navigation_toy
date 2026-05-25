@@ -102,7 +102,6 @@ func _update_catch_star() -> void:
 	var within := _get_ball_distance_squared() <= catch_radius_sq
 	if within and not _was_within_catch_radius:
 		_spawn_catch_star()
-		_register_catch()
 	_was_within_catch_radius = within
 
 
@@ -118,12 +117,6 @@ func _spawn_catch_star() -> void:
 
 func _on_catch_star_exited() -> void:
 	_active_star = null
-
-
-func _register_catch() -> void:
-	var main := get_tree().current_scene
-	if main and main.has_method("register_cat_catch"):
-		main.register_cat_catch()
 
 
 func _begin_chase() -> void:

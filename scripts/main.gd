@@ -1,6 +1,9 @@
 extends Node3D
 
 const Ball = preload("res://scripts/ball.gd")
+const NavigationLayersLib = preload("res://scripts/navigation_layers.gd")
+const NavigationUtilsLib = preload("res://scripts/navigation_utils.gd")
+const DefaultPNJScene: PackedScene = preload("res://scenes/DefaultPNJ.tscn")
 
 const RAY_LENGTH := 1000.0
 const NAV_POINT_MAX_DISTANCE := 1.0
@@ -11,12 +14,14 @@ const THROW_MIN_SPEED := 2.0
 const THROW_MAX_SPEED := 22.0
 
 @onready var navigation_region: NavigationRegion3D = $NavigationRegion3D
+@onready var paths_nav_region: PathsNavRegion = $NavigationRegion3D/Ground/DevWorldLayout/PathsNavRegion
 @onready var _info_panel: PanelContainer = $CanvasLayer/CharacterInfoPanel
 @onready var _spawn_toolbar: Control = $CanvasLayer/SpawnToolbar
 @onready var _throw_feedback: Label = $CanvasLayer/ThrowFeedbackLabel
-@onready var _cat_catch_score = $CanvasLayer/CatCatchScore
 @onready var _cube_build_mode: Node3D = $CubeBuildMode
 @onready var _ramp_build_mode: Node3D = $RampBuildMode
+@onready var _path_build_mode: Node3D = $PathBuildMode
+@onready var _characters: Node3D = $Characters
 
 var _selected_character: CharacterBody3D = null
 var _selected_ball: Ball = null
@@ -27,12 +32,22 @@ var _throw_drag_start: Vector2 = Vector2.ZERO
 func _ready() -> void:
 	_spawn_toolbar.cube_build_requested.connect(_on_cube_build_requested)
 	_spawn_toolbar.ramp_build_requested.connect(_on_ramp_build_requested)
+	_spawn_toolbar.path_build_requested.connect(_on_path_build_requested)
+	_spawn_toolbar.pnj_spawn_requested.connect(_on_pnj_spawn_requested)
 	_cube_build_mode.mode_exited.connect(_on_cube_build_mode_exited)
 	_ramp_build_mode.mode_exited.connect(_on_ramp_build_mode_exited)
+	_path_build_mode.mode_exited.connect(_on_path_build_mode_exited)
 
+	var region := _get_navigation_region()
+	if region == null:
+		return
+	region.navigation_layers = NavigationLayersLib.LAYER_GROUND
+	region.travel_cost = NavigationLayersLib.GROUND_TRAVEL_COST
+	region.enter_cost = NavigationLayersLib.GROUND_ENTER_COST
+	region.use_edge_connections = true
 
-func register_cat_catch() -> void:
-	_cat_catch_score.increment()
+	await get_tree().physics_frame
+	sync_navigation()
 
 
 func _process(_delta: float) -> void:
@@ -67,14 +82,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 
-	if not mouse_event.pressed:
-		return
-
 	var active_build_mode := _get_active_build_mode()
 	if active_build_mode:
-		if mouse_event.pressed:
-			active_build_mode.handle_mouse_button(mouse_event.button_index)
+		active_build_mode.handle_mouse_button(mouse_event.button_index, mouse_event.pressed)
 		get_viewport().set_input_as_handled()
+		return
+
+	if not mouse_event.pressed:
 		return
 
 	if mouse_event.button_index == MOUSE_BUTTON_RIGHT and mouse_event.pressed:
@@ -161,6 +175,52 @@ func _on_ramp_build_requested() -> void:
 	_ramp_build_mode.enter()
 
 
+func _on_path_build_requested() -> void:
+	if _path_build_mode.is_active():
+		return
+	_exit_all_build_modes()
+	_deselect_all()
+	_spawn_toolbar.set_path_build_active(true)
+	_path_build_mode.enter()
+
+
+func _on_pnj_spawn_requested() -> void:
+	_exit_all_build_modes()
+	_deselect_all()
+
+	var pnj := DefaultPNJScene.instantiate() as DefaultPNJ
+	_characters.add_child(pnj)
+	var spawn_pos := _get_pnj_spawn_position()
+	spawn_pos = NavigationServer3D.map_get_closest_point(
+		navigation_region.get_navigation_map(),
+		spawn_pos
+	)
+	if spawn_pos != Vector3.ZERO:
+		pnj.global_position = spawn_pos
+
+
+func _get_pnj_spawn_position() -> Vector3:
+	var nav_map := navigation_region.get_navigation_map()
+	var spawn_point := NavigationUtilsLib.pick_random_point_on_map(
+		nav_map,
+		NavigationLayersLib.LAYER_PATH,
+		Vector3.ZERO,
+		0.0,
+		8
+	)
+	if spawn_point == Vector3.ZERO:
+		spawn_point = NavigationUtilsLib.pick_random_point_on_map(
+			nav_map,
+			NavigationLayersLib.AGENT_LAYERS,
+			Vector3.ZERO,
+			0.0,
+			4
+		)
+	if spawn_point == Vector3.ZERO:
+		return Vector3.ZERO
+	return NavigationUtilsLib.snap_to_navmesh(nav_map, spawn_point)
+
+
 func _on_cube_build_mode_exited() -> void:
 	_spawn_toolbar.set_cube_build_active(false)
 
@@ -169,10 +229,48 @@ func _on_ramp_build_mode_exited() -> void:
 	_spawn_toolbar.set_ramp_build_active(false)
 
 
-func rebake_navigation_mesh() -> void:
-	if navigation_region.is_baking():
+func _on_path_build_mode_exited() -> void:
+	_spawn_toolbar.set_path_build_active(false)
+
+
+func sync_navigation() -> void:
+	var region := _get_navigation_region()
+	if region == null or not is_instance_valid(region):
 		return
-	navigation_region.bake_navigation_mesh(true)
+	var paths_region := _get_paths_nav_region()
+	if paths_region:
+		paths_region.rebake_from_placed_paths()
+	rebake_navigation_mesh()
+
+
+func rebake_navigation_mesh() -> void:
+	var region := _get_navigation_region()
+	if region == null or not is_instance_valid(region):
+		return
+	if region.is_baking():
+		return
+	if not region.navigation_mesh_changed.is_connected(_on_navigation_mesh_changed):
+		region.navigation_mesh_changed.connect(_on_navigation_mesh_changed, CONNECT_ONE_SHOT)
+	region.bake_navigation_mesh(true)
+
+
+func _on_navigation_mesh_changed() -> void:
+	var region := _get_navigation_region()
+	if region == null:
+		return
+	NavigationUtilsLib.force_map_update(region.get_navigation_map())
+
+
+func _get_navigation_region() -> NavigationRegion3D:
+	if navigation_region != null:
+		return navigation_region
+	return get_node_or_null("NavigationRegion3D") as NavigationRegion3D
+
+
+func _get_paths_nav_region() -> PathsNavRegion:
+	if paths_nav_region != null:
+		return paths_nav_region
+	return get_node_or_null("NavigationRegion3D/Ground/DevWorldLayout/PathsNavRegion") as PathsNavRegion
 
 
 func _get_active_build_mode() -> Node3D:
@@ -180,6 +278,8 @@ func _get_active_build_mode() -> Node3D:
 		return _cube_build_mode
 	if _ramp_build_mode.is_active():
 		return _ramp_build_mode
+	if _path_build_mode.is_active():
+		return _path_build_mode
 	return null
 
 
@@ -188,8 +288,11 @@ func _exit_all_build_modes() -> void:
 		_cube_build_mode.exit()
 	if _ramp_build_mode.is_active():
 		_ramp_build_mode.exit()
+	if _path_build_mode.is_active():
+		_path_build_mode.exit()
 	_spawn_toolbar.set_cube_build_active(false)
 	_spawn_toolbar.set_ramp_build_active(false)
+	_spawn_toolbar.set_path_build_active(false)
 
 
 func _handle_left_click() -> void:

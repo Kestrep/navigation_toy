@@ -48,8 +48,8 @@ func rotate_y_90() -> void:
 	_update_preview_rotation()
 
 
-func handle_mouse_button(button_index: int) -> void:
-	if not _active:
+func handle_mouse_button(button_index: int, pressed: bool = true) -> void:
+	if not _active or not pressed:
 		return
 
 	match button_index:
@@ -107,7 +107,7 @@ func _place_ramp() -> void:
 	_ground.add_child(ramp)
 	ramp.global_position = _snap_ramp_root(world_point)
 	ramp.rotation.y = _y_rotation_steps * ROTATION_STEP
-	_main.rebake_navigation_mesh()
+	_main.sync_navigation()
 
 
 func _snap_ramp_root(world_point: Vector3) -> Vector3:

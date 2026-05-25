@@ -1,4 +1,6 @@
-[gd_scene format=3 uid="uid://vwo7xpdvylki"]
+[gd_scene format=3 uid="uid://3g0r7a6jih3e"]
+
+[ext_resource type="Script" path="res://scripts/default_pnj.gd" id="1_default_pnj"]
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_char"]
 height = 1.6
@@ -16,27 +18,29 @@ albedo_color = Color(1, 0.101960786, 1, 1)
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_53v7d"]
 height = 1.6
 
-[node name="PNJ Homme" type="CharacterBody3D" unique_id=1748313328 groups=["selectable_character"]]
+[node name="DefaultPNJ" type="CharacterBody3D" groups=["selectable_character", "selectable_pnj"]]
 collision_layer = 2
+script = ExtResource("1_default_pnj")
 
-[node name="VisualNode" type="Node3D" parent="." unique_id=888351083]
+[node name="VisualNode" type="Node3D" parent="."]
 
-[node name="Corps" type="MeshInstance3D" parent="VisualNode" unique_id=310279246]
+[node name="Corps" type="MeshInstance3D" parent="VisualNode"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
 mesh = SubResource("CylinderMesh_char")
 surface_material_override/0 = SubResource("StandardMaterial3D_char")
 
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="VisualNode" unique_id=928473669]
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="VisualNode"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.005, 0)
 mesh = SubResource("CylinderMesh_53v7d")
 surface_material_override/0 = SubResource("StandardMaterial3D_3i3nt")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=693436197]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
 shape = SubResource("CylinderShape3D_53v7d")
 
-[node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=1150483651]
-path_desired_distance = 0.5
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+navigation_layers = 3
+path_desired_distance = 0.2
 target_desired_distance = 0.5
 avoidance_enabled = true
 height = 2.0
@@ -45,5 +49,5 @@ neighbor_distance = 4.0
 max_neighbors = 3
 time_horizon_agents = 0.25
 max_speed = 4.0
-debug_enabled = true
+debug_enabled = false
 debug_path_custom_color = Color(0.45119536, 0.00014304458, 0.45190018, 1)

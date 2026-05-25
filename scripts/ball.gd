@@ -118,8 +118,8 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	if not _is_thrown:
 		return
 
-	var transform := state.transform
-	var pos := transform.origin
+	var body_transform := state.transform
+	var pos := body_transform.origin
 	var vel := state.linear_velocity
 	var min_body_y := _get_min_body_y()
 	if pos.y < min_body_y:
@@ -137,8 +137,8 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	if hit_edge:
 		vel = Vector3.ZERO
 
-	transform.origin = pos
-	state.transform = transform
+	body_transform.origin = pos
+	state.transform = body_transform
 	state.linear_velocity = vel
 
 	if hit_edge:

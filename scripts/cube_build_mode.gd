@@ -38,8 +38,8 @@ func exit() -> void:
 	mode_exited.emit()
 
 
-func handle_mouse_button(button_index: int) -> void:
-	if not _active:
+func handle_mouse_button(button_index: int, pressed: bool = true) -> void:
+	if not _active or not pressed:
 		return
 
 	match button_index:
@@ -89,7 +89,7 @@ func _place_cube() -> void:
 	var cube := CUBE_SCENE.instantiate()
 	_ground.add_child(cube)
 	cube.global_position = _snap_cube_root(world_point)
-	_main.rebake_navigation_mesh()
+	_main.sync_navigation()
 
 
 func _snap_cube_root(world_point: Vector3) -> Vector3:
